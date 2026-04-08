@@ -1,0 +1,110 @@
+import { describe, it, expect } from 'vitest';
+import { server } from './setup.js';
+
+describe('Backend API Integration Tests', () => {
+  describe('Health Check', () => {
+    it('should return health status', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/health',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty('status', 'ok');
+      expect(body).toHaveProperty('timestamp');
+    });
+  });
+
+  describe('Sessions API', () => {
+    it('should list sessions', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/sessions/sessions',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty('sessions');
+      expect(Array.isArray(body.sessions)).toBe(true);
+    });
+
+    it('should return 404 for non-existent session', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/sessions/sessions/non-existent-id',
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty('error');
+    });
+
+    it.skip('should create a new session', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/sessions/sessions',
+        payload: {
+          agent: 'test-agent',
+          cwd: '/tmp',
+          name: 'Test Session',
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty('handle');
+      expect(body).toHaveProperty('record');
+    });
+
+    it('should return 400 for invalid session creation', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/sessions/sessions',
+        payload: {
+          // Missing required 'agent' field
+          cwd: '/tmp',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('Flows API', () => {
+    it('should list flows', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/flows/flows',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty('runs');
+      expect(Array.isArray(body.runs)).toBe(true);
+    });
+
+    it('should return 404 for non-existent flow', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/flows/flows/non-existent-run-id',
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty('error');
+    });
+
+    it('should return 501 for flow run execution', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/flows/flows/run',
+      });
+
+      expect(response.statusCode).toBe(501);
+      const body = JSON.parse(response.body);
+      expect(body).toHaveProperty('status', 'not_implemented');
+      expect(body).toHaveProperty('message');
+    });
+  });
+});

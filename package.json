@@ -1,0 +1,34 @@
+{
+  "name": "acpx-ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ACPX UI Monorepo - Frontend and Backend",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "acpx-fork"
+  ],
+  "scripts": {
+    "dev": "bun run --filter frontend dev & bun run --filter backend dev",
+    "dev:frontend": "bun run --filter frontend dev",
+    "dev:backend": "bun run --filter backend dev",
+    "build": "bun run build:frontend && bun run build:backend",
+    "build:frontend": "bun run --filter frontend build",
+    "build:backend": "bun run --filter backend build",
+    "test": "bun run test:frontend && bun run test:backend",
+    "test:frontend": "bun run --filter frontend test",
+    "test:backend": "bun run --filter backend test",
+    "lint": "bun run lint:frontend && bun run lint:backend",
+    "lint:frontend": "bun run --filter frontend lint",
+    "lint:backend": "bun run --filter backend lint",
+    "clean": "rm -rf node_modules frontend/node_modules backend/node_modules acpx-fork/node_modules frontend/dist backend/dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1"
+  },
+  "packageManager": "bun@1.1.38"
+}
