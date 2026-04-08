@@ -519,42 +519,7 @@ cd backend
 NODE_ENV=production node dist/index.js
 ```
 
-### Option 2: Docker
-
-Create `Dockerfile` in project root:
-
-```dockerfile
-FROM oven/bun:1 AS builder
-WORKDIR /app
-COPY package.json bun.lock ./
-COPY frontend/package.json ./frontend/
-COPY backend/package.json ./backend/
-RUN bun install --frozen-lockfile
-COPY . .
-RUN bun run build
-
-FROM node:20-alpine
-WORKDIR /app
-COPY --from=builder /app/backend/dist ./dist
-COPY --from=builder /app/frontend/dist ./public
-COPY --from=builder /app/backend/node_modules ./node_modules
-COPY --from=builder /app/backend/package.json ./
-
-ENV NODE_ENV=production
-ENV PORT=3001
-ENV HOST=0.0.0.0
-
-EXPOSE 3001
-CMD ["node", "dist/index.js"]
-```
-
-Build and run:
-```bash
-docker build -t acpx-ui .
-docker run -p 3001:3001 acpx-ui
-```
-
-### Option 3: Reverse Proxy (Nginx)
+### Option 2: Reverse Proxy (Nginx)
 
 Backend on port 3001, Nginx in front:
 
