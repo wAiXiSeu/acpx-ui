@@ -471,3 +471,151 @@ Flow Run → Backend reads manifest.json
 ## License
 
 MIT
+
+## Production Deployment
+
+### Quick Start
+
+```bash
+# 1. Build
+bun install
+bun run build
+
+# 2. Start backend (serves frontend static files)
+cd backend
+NODE_ENV=production PORT=3001 HOST=0.0.0.0 node dist/index.js
+```
+
+### Environment Variables
+
+**Backend (`backend/.env.production`):**
+```bash
+NODE_ENV=production
+PORT=3001
+HOST=0.0.0.0
+CORS_ORIGIN=https://your-domain.com
+```
+
+**Frontend (build time):**
+```bash
+# frontend/.env.production
+VITE_API_URL=https://your-domain.com
+VITE_WS_URL=wss://your-domain.com
+```
+
+### Option 1: Standalone Backend (Recommended)
+
+The backend can serve the frontend static files directly:
+
+```bash
+# Build frontend (outputs to frontend/dist)
+bun run build:frontend
+
+# Build backend
+bun run build:backend
+
+# Start - backend serves both API and static files
+cd backend
+NODE_ENV=production node dist/index.js
+```
+
+### Option 2: Docker
+
+Create `Dockerfile` in project root:
+
+```dockerfile
+FROM oven/bun:1 AS builder
+WORKDIR /app
+COPY package.json bun.lock ./
+COPY frontend/package.json ./frontend/
+COPY backend/package.json ./backend/
+RUN bun install --frozen-lockfile
+COPY . .
+RUN bun run build
+
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/frontend/dist ./public
+COPY --from=builder /app/backend/node_modules ./node_modules
+COPY --from=builder /app/backend/package.json ./
+
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOST=0.0.0.0
+
+EXPOSE 3001
+CMD ["node", "dist/index.js"]
+```
+
+Build and run:
+```bash
+docker build -t acpx-ui .
+docker run -p 3001:3001 acpx-ui
+```
+
+### Option 3: Reverse Proxy (Nginx)
+
+Backend on port 3001, Nginx in front:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    # Frontend static files
+    location / {
+        root /var/www/acpx-ui/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API proxy
+    location /api {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # WebSocket proxy
+    location /ws {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+### Process Management (PM2)
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start backend
+pm2 start backend/dist/index.js --name acpx-ui-backend
+
+# Save and enable startup
+pm2 save
+pm2 startup
+```
+
+### Health Check
+
+```bash
+curl http://localhost:3001/health
+# {"status":"ok","timestamp":"2024-01-15T10:30:00.000Z"}
+```
+
+### Production Checklist
+
+- [ ] Set `NODE_ENV=production`
+- [ ] Configure `CORS_ORIGIN` to your domain
+- [ ] Set `VITE_API_URL` and `VITE_WS_URL` before building frontend
+- [ ] Ensure acpx is installed: `npm install -g acpx@latest`
+- [ ] Configure firewall to allow port 3001 (or your chosen port)
+- [ ] Set up SSL/TLS (Let's Encrypt recommended)
+- [ ] Configure log rotation for backend logs

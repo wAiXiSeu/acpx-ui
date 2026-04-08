@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^8.5.0",
+    "@fastify/static": "^7.0.4",
     "@fastify/websocket": "^8.3.1",
     "@local/acpx": "file:../acpx-fork",
     "fastify": "^4.28.1",

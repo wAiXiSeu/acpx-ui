@@ -1,10 +1,15 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { config } from './config';
+import staticPlugin from '@fastify/static';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { config, isProduction } from './config';
 import routes from './routes';
 import websocketPlugin from './plugins/websocket';
 import { SessionService } from './services/session.service';
 import { permissionManager } from './services/permission.service';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const fastify = Fastify({
   logger: {
@@ -24,6 +29,26 @@ fastify.register(cors, {
 
 fastify.register(websocketPlugin);
 fastify.register(routes);
+
+// Serve frontend static files in production
+if (isProduction) {
+  const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+  
+  fastify.register(staticPlugin, {
+    root: frontendDistPath,
+    prefix: '/',
+    decorateReply: false,
+  });
+
+  // SPA fallback - serve index.html for client-side routing
+  fastify.setNotFoundHandler((request, reply) => {
+    if (!request.url.startsWith('/api') && !request.url.startsWith('/ws')) {
+      reply.sendFile('index.html');
+    } else {
+      reply.code(404).send({ error: 'Not found' });
+    }
+  });
+}
 
 fastify.setErrorHandler((error, _request, reply) => {
   fastify.log.error(error);
