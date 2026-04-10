@@ -23,7 +23,7 @@ describe('Backend API Integration Tests', () => {
     it('should list sessions', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/sessions/sessions',
+        url: '/api/sessions',
       });
 
       expect(response.statusCode).toBe(200);
@@ -35,7 +35,7 @@ describe('Backend API Integration Tests', () => {
     it('should return 404 for non-existent session', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/sessions/sessions/non-existent-id',
+        url: '/api/sessions/non-existent-id',
       });
 
       expect(response.statusCode).toBe(404);
@@ -43,27 +43,25 @@ describe('Backend API Integration Tests', () => {
       expect(body).toHaveProperty('error');
     });
 
-    it.skip('should create a new session', async () => {
+    // NOTE: Full session creation test requires a real agent binary on the system.
+    // We test the validation path instead.
+    it('should reject session creation with empty agent name', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/sessions/sessions',
+        url: '/api/sessions',
         payload: {
-          agent: 'test-agent',
+          agent: '',
           cwd: '/tmp',
-          name: 'Test Session',
         },
       });
 
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('handle');
-      expect(body).toHaveProperty('record');
+      expect(response.statusCode).toBe(400);
     });
 
     it('should return 400 for invalid session creation', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/sessions/sessions',
+        url: '/api/sessions',
         payload: {
           // Missing required 'agent' field
           cwd: '/tmp',
@@ -78,7 +76,7 @@ describe('Backend API Integration Tests', () => {
     it('should list flows', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/flows/flows',
+        url: '/api/flows',
       });
 
       expect(response.statusCode).toBe(200);
@@ -90,7 +88,7 @@ describe('Backend API Integration Tests', () => {
     it('should return 404 for non-existent flow', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/flows/flows/non-existent-run-id',
+        url: '/api/flows/non-existent-run-id',
       });
 
       expect(response.statusCode).toBe(404);
@@ -101,7 +99,7 @@ describe('Backend API Integration Tests', () => {
     it('should return 501 for flow run execution', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/flows/flows/run',
+        url: '/api/flows/run',
       });
 
       expect(response.statusCode).toBe(501);
