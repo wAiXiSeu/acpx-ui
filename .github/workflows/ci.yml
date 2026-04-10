@@ -19,6 +19,9 @@ jobs:
       - name: Clone acpx-fork
         run: git clone https://github.com/openclaw/acpx.git acpx-fork --depth 1
 
+      - name: Build acpx-fork
+        run: cd acpx-fork && npm install && npm run build
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
