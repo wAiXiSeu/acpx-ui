@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PermissionManager } from '../src/services/permission.service.js';
 import type { RequestPermissionRequest, RequestPermissionResponse } from '@agentclientprotocol/sdk';
 
@@ -68,7 +68,9 @@ describe('PermissionManager', () => {
 
       const result = await promise;
       expect(result.outcome.outcome).toBe('cancelled');
+    });
 
+    afterEach(() => {
       vi.useRealTimers();
     });
   });

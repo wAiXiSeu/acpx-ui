@@ -74,6 +74,32 @@ describe('SessionService', () => {
         SessionService.getInstance().createSession({ agent: '  ' })
       ).rejects.toThrow('Agent name is required');
     });
+
+    it('should create session and cache handle', async () => {
+      const mockModule = await import('@local/acpx/dist/prompt-turn-Di3t13Tw.js');
+      (mockModule.A as any).mockResolvedValue({
+        acpxRecordId: 'test-session-123',
+        agentCommand: 'opencode',
+        cwd: '/tmp',
+        messages: [],
+        closed: false,
+      });
+
+      const result = await SessionService.getInstance().createSession({
+        agent: 'opencode',
+        cwd: '/tmp',
+        name: 'test-session',
+      });
+
+      expect(result.handle.acpxRecordId).toBe('test-session-123');
+      expect(mockRuntime.ensureSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionKey: 'test-session',
+          agent: 'opencode',
+          cwd: '/tmp',
+        })
+      );
+    });
   });
 
   describe('closeSession', () => {
