@@ -59,11 +59,11 @@ describe('sessionStore', () => {
   });
 
   it('should update token usage', () => {
-    useSessionStore.getState().updateTokenUsage({ inputTokens: 100 });
-    expect(useSessionStore.getState().tokenUsage.inputTokens).toBe(100);
-    useSessionStore.getState().updateTokenUsage({ outputTokens: 50 });
-    expect(useSessionStore.getState().tokenUsage.outputTokens).toBe(50);
-    expect(useSessionStore.getState().tokenUsage.inputTokens).toBe(100);
+    useSessionStore.getState().updateTokenUsage({ input_tokens: 100 });
+    expect(useSessionStore.getState().tokenUsage.input_tokens).toBe(100);
+    useSessionStore.getState().updateTokenUsage({ output_tokens: 50 });
+    expect(useSessionStore.getState().tokenUsage.output_tokens).toBe(50);
+    expect(useSessionStore.getState().tokenUsage.input_tokens).toBe(100);
   });
 
   it('should set active prompt', () => {
