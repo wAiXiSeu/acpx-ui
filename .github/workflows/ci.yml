@@ -19,7 +19,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.1.38"
 
       - name: Install dependencies
         run: bun install
@@ -38,8 +38,6 @@ jobs:
 
       - name: Run backend tests
         run: bun run --filter backend test --run
-        continue-on-error: true
 
       - name: Run frontend tests
         run: bun run --filter frontend test --run
-        continue-on-error: true
