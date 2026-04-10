@@ -1,112 +1,74 @@
 import fp from 'fastify-plugin';
 import websocket from '@fastify/websocket';
-import { FastifyPluginAsync } from 'fastify';
-import type WebSocket from 'ws';
-import { createSessionHandler, SessionWebSocketHandler } from '../websocket/session-handler.js';
-import { permissionManager } from '../services/permission.service.js';
+import type { FastifyPluginAsync } from 'fastify';
+import { eventBus } from '../shared/event-bus.js';
+import { sessionRegistry } from '../shared/session-registry.js';
 
 const websocketPlugin: FastifyPluginAsync = async (fastify) => {
   await fastify.register(websocket);
 
-  // WebSocket routes must be attached synchronously
   fastify.register(async function (fastify) {
     // Basic echo WebSocket for testing
-    fastify.get('/ws', { websocket: true }, async (connection, _req) => {
+    fastify.get('/ws', { websocket: true }, async (connection) => {
       connection.socket.on('message', (message: Buffer) => {
         connection.socket.send(JSON.stringify({
           type: 'echo',
           data: message.toString(),
         }));
       });
-
-      connection.socket.on('close', () => {
-      });
     });
 
-    // Session WebSocket route for real-time output streaming
+    // Session WebSocket — read-only event streaming
     fastify.get('/ws/session/:sessionId', { websocket: true }, async (connection, req) => {
       const { sessionId } = req.params as { sessionId: string };
-      
-      // Create handler synchronously (critical for message delivery)
-      const handler: SessionWebSocketHandler = createSessionHandler(
-        connection.socket as WebSocket,
-        sessionId,
-      );
 
-      // Set up permission event handler to forward to WebSocket client
-      permissionManager.setEventHandler((event) => {
-        if (event.type === 'permission_request') {
+      // Subscribe to event bus for this session
+      const eventHandler = (event: import('../shared/types.js').AcpEvent) => {
+        connection.socket.send(JSON.stringify({
+          type: 'event',
+          sessionId: event.sessionId,
+          data: event,
+        }));
+      };
+
+      eventBus.onSession(sessionId, eventHandler);
+
+      // Also send session creation/update events
+      const allHandler = (event: import('../shared/types.js').AcpEvent) => {
+        if (event.type === 'done') {
           connection.socket.send(JSON.stringify({
-            type: 'permission_request',
-            requestId: event.requestId,
-            params: event.params,
+            type: 'session_done',
+            data: { sessionId: event.sessionId, stopReason: event.payload?.stopReason },
           }));
         }
-      });
+      };
+      eventBus.onAll(allHandler);
 
-      // Handle incoming messages from client
       connection.socket.on('message', async (message: Buffer) => {
         try {
           const data = JSON.parse(message.toString());
-          
+
           switch (data.type) {
-            case 'prompt':
-              // Run a turn with the provided text
-              // Can use either handle (from createSession) or sessionId
-              const handleOrSessionId = data.handle || data.sessionId || sessionId;
-              if (data.text && handleOrSessionId) {
-                await handler.runTurn(handleOrSessionId, data.text);
-              } else {
+            case 'subscribe':
+              if (data.sessionId) {
+                eventBus.onSession(data.sessionId, eventHandler);
                 connection.socket.send(JSON.stringify({
-                  type: 'error',
-                  message: 'Missing text for prompt',
-                  code: 'INVALID_PROMPT',
+                  type: 'status',
+                  text: `Subscribed to session ${data.sessionId}`,
                 }));
               }
               break;
 
-            case 'cancel':
-              // Cancel the current turn
-              handler.cancel();
+            case 'unsubscribe':
+              eventBus.offSession(data.sessionId, eventHandler);
               connection.socket.send(JSON.stringify({
                 type: 'status',
-                text: 'Turn cancelled',
+                text: `Unsubscribed from session ${data.sessionId}`,
               }));
-              break;
-
-            case 'permission_response':
-              // Handle permission response from client
-              if (data.requestId && data.response) {
-                const success = permissionManager.respondToPermission(
-                  data.requestId,
-                  data.response
-                );
-                if (success) {
-                  connection.socket.send(JSON.stringify({
-                    type: 'status',
-                    text: 'Permission response processed',
-                  }));
-                } else {
-                  connection.socket.send(JSON.stringify({
-                    type: 'error',
-                    message: 'No pending permission request found',
-                    code: 'NO_PENDING_PERMISSION',
-                  }));
-                }
-              } else {
-                connection.socket.send(JSON.stringify({
-                  type: 'error',
-                  message: 'Missing requestId or response for permission_response',
-                  code: 'INVALID_PERMISSION_RESPONSE',
-                }));
-              }
               break;
 
             case 'ping':
-              // Keepalive ping
-              connection.socket.send(JSON.stringify({
-                type: 'pong',
-              }));
+              connection.socket.send(JSON.stringify({ type: 'pong' }));
               break;
 
             default:
@@ -126,19 +88,25 @@ const websocketPlugin: FastifyPluginAsync = async (fastify) => {
       });
 
       connection.socket.on('close', () => {
-        permissionManager.clearEventHandler();
-        permissionManager.cancelAllPending();
+        eventBus.offSession(sessionId, eventHandler);
+        eventBus.offAll(allHandler);
       });
 
-      // Send initial connection status
+      // Send initial session info
+      const session = sessionRegistry.getById(sessionId);
+      if (session) {
+        connection.socket.send(JSON.stringify({
+          type: 'session_update',
+          data: session,
+        }));
+      }
+
       connection.socket.send(JSON.stringify({
         type: 'status',
-        text: `Connected to session ${sessionId}`,
+        text: `Connected. Listening to session ${sessionId} events.`,
       }));
     });
   });
 };
 
-export default fp(websocketPlugin, {
-  name: 'websocket',
-});
+export default fp(websocketPlugin, { name: 'websocket' });
