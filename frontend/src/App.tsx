@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from "react-router-dom";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import History from "./pages/History";
 import Home from "./pages/Home";
 import Sessions from "./pages/Sessions";
@@ -62,12 +63,14 @@ function Layout({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/sessions" element={<Sessions />} />
-        <Route path="/flows" element={<Flows />} />
-        <Route path="/history" element={<History />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/sessions" element={<Sessions />} />
+          <Route path="/flows" element={<Flows />} />
+          <Route path="/history" element={<History />} />
+        </Routes>
+      </ErrorBoundary>
     </Layout>
   );
 }
