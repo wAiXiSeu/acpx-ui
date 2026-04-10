@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useWebSocket } from './useWebSocket';
 import { useSessionStore } from '../stores/sessionStore';
-import { useUIStore } from '../stores/uiStore';
-import type { WsPermissionParams, PermissionResponseKind } from '../types/websocket';
-import type { SessionMessage, SessionAgentContent } from '../types/acpx';
+import type { AcpEvent } from '../types/acpx';
 
 interface UseSessionStreamReturn {
   isConnected: boolean;
   isReconnecting: boolean;
   error: string | null;
-  sendPrompt: (text: string, handle?: unknown) => void;
-  cancelStream: () => void;
-  sendPermissionResponse: (requestId: string, kind: PermissionResponseKind) => void;
+  subscribe: (sessionId: string) => void;
+  unsubscribe: (sessionId: string) => void;
   disconnect: () => void;
   reconnect: () => void;
-  currentPermission: WsPermissionParams | null;
 }
 
 export function useSessionStream(sessionId: string | null): UseSessionStreamReturn {
@@ -28,156 +24,81 @@ export function useSessionStream(sessionId: string | null): UseSessionStreamRetu
     lastMessage,
   } = useWebSocket(sessionId);
 
-  const {
-    setStreaming,
-    addMessage,
-    updateTokenUsage,
-  } = useSessionStore();
+  const { addEvent, setStreaming } = useSessionStore();
 
-  const {
-    showPermissionModal,
-    closeModal,
-    addToast,
-  } = useUIStore();
-
-  const currentPermissionRef = useRef<WsPermissionParams | null>(null);
   const streamingTextRef = useRef<string>('');
   const streamingThoughtRef = useRef<string>('');
 
-  const handleTextDelta = useCallback((text: string, stream?: 'output' | 'thought') => {
-    if (stream === 'thought') {
-      streamingThoughtRef.current += text;
-    } else {
-      streamingTextRef.current += text;
-    }
-  }, []);
-
-  const flushStreamingText = useCallback(() => {
+  const flushBuffer = useCallback(() => {
     const outputText = streamingTextRef.current;
     const thoughtText = streamingThoughtRef.current;
-
     if (outputText || thoughtText) {
-      const content: SessionAgentContent[] = [];
-
-      if (thoughtText) {
-        content.push({ Thinking: { text: thoughtText } });
-      }
-
-      if (outputText) {
-        content.push({ Text: outputText });
-      }
-
-      const agentMessage: SessionMessage = {
-        Agent: {
-          content,
-          tool_results: {},
-        },
-      };
-
-      addMessage(agentMessage);
+      addEvent({
+        type: 'text_delta',
+        sessionId: sessionId || '',
+        timestamp: Date.now(),
+        payload: { text: outputText, thought: thoughtText || undefined },
+      });
       streamingTextRef.current = '';
       streamingThoughtRef.current = '';
     }
-  }, [addMessage]);
-
-  const handleStatus = useCallback((_text: string, used?: number, size?: number) => {
-    if (used !== undefined && size !== undefined) {
-      updateTokenUsage({
-        input_tokens: used,
-        output_tokens: size - used,
-      });
-    }
-  }, [updateTokenUsage]);
-
-  const handleToolCall = useCallback((text: string, toolCallId?: string, _status?: string, title?: string) => {
-    const toolMessage: SessionMessage = {
-      Agent: {
-        content: [{ ToolUse: { id: toolCallId || '', name: title || text, raw_input: '', input: {}, is_input_complete: true } }],
-        tool_results: {},
-      },
-    };
-    addMessage(toolMessage);
-  }, [addMessage]);
-
-  const handlePermissionRequest = useCallback((params: WsPermissionParams) => {
-    currentPermissionRef.current = params;
-    showPermissionModal(params);
-  }, [showPermissionModal]);
-
-  const handleError = useCallback((message: string, _code?: string, _retryable?: boolean) => {
-    addToast(message, 'error');
-    setStreaming(false);
-    flushStreamingText();
-  }, [addToast, setStreaming, flushStreamingText]);
-
-  const handleDone = useCallback((_stopReason?: string) => {
-    setStreaming(false);
-    flushStreamingText();
-    currentPermissionRef.current = null;
-    closeModal();
-  }, [setStreaming, flushStreamingText, closeModal]);
+  }, [addEvent, sessionId]);
 
   useEffect(() => {
     if (!lastMessage) return;
 
     switch (lastMessage.type) {
-      case 'text_delta':
-        handleTextDelta(lastMessage.text, lastMessage.stream);
+      case 'event': {
+        const event = lastMessage.data as AcpEvent;
+        addEvent(event);
+
+        if (event.type === 'text_delta') {
+          const text = (event.payload as any)?.text || '';
+          if (text) {
+            streamingTextRef.current += text;
+          }
+        }
+        break;
+      }
+
+      case 'session_done':
+        setStreaming(false);
+        flushBuffer();
         break;
 
-      case 'status':
-        handleStatus(lastMessage.text, lastMessage.used, lastMessage.size);
-        break;
-
-      case 'tool_call':
-        handleToolCall(lastMessage.text, lastMessage.toolCallId, lastMessage.status, lastMessage.title);
-        break;
-
-      case 'permission_request':
-        handlePermissionRequest(lastMessage.params);
-        break;
-
-      case 'error':
-        handleError(lastMessage.message, lastMessage.code, lastMessage.retryable);
-        break;
-
-      case 'done':
-        handleDone(lastMessage.stopReason);
+      case 'session_update':
         break;
 
       case 'pong':
         break;
-    }
-  }, [lastMessage, handleTextDelta, handleStatus, handleToolCall, handlePermissionRequest, handleError, handleDone]);
 
-  const sendPrompt = useCallback((text: string, handle?: unknown) => {
+      case 'error':
+        console.error('WS error:', lastMessage.message);
+        setStreaming(false);
+        flushBuffer();
+        break;
+    }
+  }, [lastMessage, addEvent, setStreaming, flushBuffer]);
+
+  const subscribe = useCallback((sid: string) => {
+    send({ type: 'subscribe', sessionId: sid });
     setStreaming(true);
     streamingTextRef.current = '';
     streamingThoughtRef.current = '';
-    send({ type: 'prompt', text, handle, sessionId });
-  }, [setStreaming, send, sessionId]);
+  }, [send, setStreaming]);
 
-  const cancelStream = useCallback(() => {
-    send({ type: 'cancel' });
-    setStreaming(false);
-    flushStreamingText();
-  }, [send, setStreaming, flushStreamingText]);
-
-  const sendPermissionResponse = useCallback((requestId: string, kind: PermissionResponseKind) => {
-    send({ type: 'permission_response', requestId, response: kind });
-    currentPermissionRef.current = null;
-    closeModal();
-  }, [send, closeModal]);
+  const unsubscribe = useCallback((sid: string) => {
+    send({ type: 'unsubscribe', sessionId: sid });
+    flushBuffer();
+  }, [send, flushBuffer]);
 
   return {
     isConnected,
     isReconnecting,
     error: wsError,
-    sendPrompt,
-    cancelStream,
-    sendPermissionResponse,
+    subscribe,
+    unsubscribe,
     disconnect,
     reconnect,
-    currentPermission: currentPermissionRef.current,
   };
 }

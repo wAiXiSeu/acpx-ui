@@ -1,16 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSessionStore } from '../sessionStore';
-import type { SessionMessage } from '../../types/acpx';
+import type { AcpEvent } from '../../types/acpx';
 
 describe('sessionStore', () => {
   beforeEach(() => {
     useSessionStore.setState({
       sessionId: null,
       isStreaming: false,
-      messages: [],
-      activePrompt: '',
-      tokenUsage: {},
+      events: [],
       connectedSessionIds: [],
+      lastError: null,
     });
   });
 
@@ -18,16 +17,17 @@ describe('sessionStore', () => {
     const state = useSessionStore.getState();
     expect(state.sessionId).toBeNull();
     expect(state.isStreaming).toBe(false);
-    expect(state.messages).toEqual([]);
-    expect(state.activePrompt).toBe('');
+    expect(state.events).toEqual([]);
     expect(state.connectedSessionIds).toEqual([]);
+    expect(state.lastError).toBeNull();
   });
 
-  it('should set session and clear messages', () => {
+  it('should set session and clear events', () => {
     useSessionStore.getState().setSession('session-1');
     const state = useSessionStore.getState();
     expect(state.sessionId).toBe('session-1');
-    expect(state.messages).toEqual([]);
+    expect(state.events).toEqual([]);
+    expect(state.lastError).toBeNull();
   });
 
   it('should clear session', () => {
@@ -36,19 +36,20 @@ describe('sessionStore', () => {
     const state = useSessionStore.getState();
     expect(state.sessionId).toBeNull();
     expect(state.isStreaming).toBe(false);
-    expect(state.messages).toEqual([]);
+    expect(state.events).toEqual([]);
+    expect(state.connectedSessionIds).toEqual([]);
   });
 
-  it('should add message', () => {
-    const message: SessionMessage = {
-      User: {
-        id: 'msg-1',
-        content: [{ Text: 'Hello' }],
-      },
+  it('should add event', () => {
+    const event: AcpEvent = {
+      type: 'text_delta',
+      sessionId: 'session-1',
+      timestamp: Date.now(),
+      payload: { text: 'Hello' },
     };
-    useSessionStore.getState().addMessage(message);
-    expect(useSessionStore.getState().messages).toHaveLength(1);
-    expect(useSessionStore.getState().messages[0]).toEqual(message);
+    useSessionStore.getState().addEvent(event);
+    expect(useSessionStore.getState().events).toHaveLength(1);
+    expect(useSessionStore.getState().events[0]).toEqual(event);
   });
 
   it('should set streaming state', () => {
@@ -56,19 +57,6 @@ describe('sessionStore', () => {
     expect(useSessionStore.getState().isStreaming).toBe(true);
     useSessionStore.getState().setStreaming(false);
     expect(useSessionStore.getState().isStreaming).toBe(false);
-  });
-
-  it('should update token usage', () => {
-    useSessionStore.getState().updateTokenUsage({ input_tokens: 100 });
-    expect(useSessionStore.getState().tokenUsage.input_tokens).toBe(100);
-    useSessionStore.getState().updateTokenUsage({ output_tokens: 50 });
-    expect(useSessionStore.getState().tokenUsage.output_tokens).toBe(50);
-    expect(useSessionStore.getState().tokenUsage.input_tokens).toBe(100);
-  });
-
-  it('should set active prompt', () => {
-    useSessionStore.getState().setActivePrompt('Test prompt');
-    expect(useSessionStore.getState().activePrompt).toBe('Test prompt');
   });
 
   it('should mark session connected', () => {
@@ -86,5 +74,12 @@ describe('sessionStore', () => {
     useSessionStore.getState().markSessionConnected('session-1');
     useSessionStore.getState().markSessionDisconnected('session-1');
     expect(useSessionStore.getState().connectedSessionIds).not.toContain('session-1');
+  });
+
+  it('should set error', () => {
+    useSessionStore.getState().setError('Connection failed');
+    expect(useSessionStore.getState().lastError).toBe('Connection failed');
+    useSessionStore.getState().setError(null);
+    expect(useSessionStore.getState().lastError).toBeNull();
   });
 });

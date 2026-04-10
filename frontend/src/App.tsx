@@ -3,13 +3,11 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import History from "./pages/History";
 import Home from "./pages/Home";
 import Sessions from "./pages/Sessions";
-import Flows from "./pages/Flows";
 
 function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { path: "/", label: "Dashboard", icon: "◆" },
     { path: "/sessions", label: "Sessions", icon: "◎" },
-    { path: "/flows", label: "Flows", icon: "⬡" },
     { path: "/history", label: "History", icon: "◈" },
   ];
 
@@ -67,7 +65,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/sessions" element={<Sessions />} />
-          <Route path="/flows" element={<Flows />} />
           <Route path="/history" element={<History />} />
         </Routes>
       </ErrorBoundary>

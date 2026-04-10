@@ -1073,3 +1073,13 @@ export interface FlowRunnerOptions {
   services?: Record<string, unknown>;
   outputRoot?: string;
 }
+
+/**
+ * ACP event emitted during streaming.
+ */
+export interface AcpEvent {
+  type: string;
+  sessionId: string;
+  timestamp: number;
+  payload?: Record<string, unknown>;
+}

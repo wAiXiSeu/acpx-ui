@@ -1,26 +1,23 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { SessionMessage, SessionTokenUsage } from '../types/acpx';
+import type { AcpEvent } from '../types/acpx';
 
 interface SessionState {
   sessionId: string | null;
   isStreaming: boolean;
-  messages: SessionMessage[];
-  activePrompt: string;
-  tokenUsage: SessionTokenUsage;
+  events: AcpEvent[];
   connectedSessionIds: string[];
+  lastError: string | null;
 }
 
 interface SessionActions {
   setSession: (sessionId: string | null) => void;
   clearSession: () => void;
-  clearMessages: () => void;
-  addMessage: (message: SessionMessage) => void;
+  addEvent: (event: AcpEvent) => void;
   setStreaming: (isStreaming: boolean) => void;
-  updateTokenUsage: (usage: Partial<SessionTokenUsage>) => void;
-  setActivePrompt: (prompt: string) => void;
   markSessionConnected: (sessionId: string) => void;
   markSessionDisconnected: (sessionId: string) => void;
+  setError: (error: string | null) => void;
 }
 
 type SessionStore = SessionState & SessionActions;
@@ -28,42 +25,31 @@ type SessionStore = SessionState & SessionActions;
 const initialState: SessionState = {
   sessionId: null,
   isStreaming: false,
-  messages: [],
-  activePrompt: '',
-  tokenUsage: {},
+  events: [],
   connectedSessionIds: [],
+  lastError: null,
 };
 
 export const useSessionStore = create<SessionStore>()(
   subscribeWithSelector((set) => ({
     ...initialState,
 
-    setSession: (sessionId) => set({ sessionId, messages: [] }),
+    setSession: (sessionId) => set({ sessionId, events: [], lastError: null }),
 
-    clearSession: () =>
-      set({
-        sessionId: null,
-        isStreaming: false,
-        messages: [],
-        activePrompt: '',
-        tokenUsage: {},
-      }),
+    clearSession: () => set({
+      sessionId: null,
+      isStreaming: false,
+      events: [],
+      connectedSessionIds: [],
+      lastError: null,
+    }),
 
-    clearMessages: () => set({ messages: [] }),
-
-    addMessage: (message) =>
+    addEvent: (event) =>
       set((state) => ({
-        messages: [...state.messages, message],
+        events: [...state.events, event],
       })),
 
     setStreaming: (isStreaming) => set({ isStreaming }),
-
-    updateTokenUsage: (usage) =>
-      set((state) => ({
-        tokenUsage: { ...state.tokenUsage, ...usage },
-      })),
-
-    setActivePrompt: (activePrompt) => set({ activePrompt }),
 
     markSessionConnected: (sessionId) =>
       set((state) => {
@@ -79,5 +65,7 @@ export const useSessionStore = create<SessionStore>()(
       set((state) => ({
         connectedSessionIds: state.connectedSessionIds.filter((id) => id !== sessionId),
       })),
+
+    setError: (error) => set({ lastError: error }),
   }))
 );
