@@ -2,27 +2,29 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-// Import from acpx-fork bundled runtime
+// Import from acpx-fork via stable export paths
 import {
   createAcpRuntime,
   createFileSessionStore,
   createAgentRegistry,
-  AcpxRuntime,
   DEFAULT_AGENT_NAME,
-} from '@local/acpx/dist/runtime.js';
+} from '@local/acpx/runtime';
 
-// Import types from acpx-fork bundled runtime
+// Import types from stable path
 import type {
+  AcpxRuntime,
   AcpRuntimeHandle,
   AcpRuntimeEvent,
   AcpRuntimeEnsureInput,
   AcpRuntimeSessionMode,
-} from '@local/acpx/dist/runtime.js';
+} from '@local/acpx/runtime';
 
-// Import session functions from bundled session module
+// WARNING: These imports use hash-based paths from acpx-fork's build output.
+// They will break if acpx-fork is rebuilt and the hash changes.
+// Track: https://github.com/openclaw/acpx/issues — request stable exports for:
+//   - listSessions / closeSession (from session module)
+//   - resolveSessionRecord (from prompt-turn module)
 import { t as sessionExports } from '@local/acpx/dist/session-DwM_3DqC.js';
-
-// Import resolveSessionRecord from bundled prompt-turn module (exported as A)
 import { A as resolveSessionRecord } from '@local/acpx/dist/prompt-turn-Di3t13Tw.js';
 
 // Import types from local backend types
