@@ -43,32 +43,28 @@ describe('Backend API Integration Tests', () => {
       expect(body).toHaveProperty('error');
     });
 
-    // NOTE: Full session creation test requires a real agent binary on the system.
-    // We test the validation path instead.
-    it('should reject session creation with empty agent name', async () => {
+    // NOTE: Session creation is now Matrix-only via /new command.
+    // POST/DELETE endpoints have been removed from REST API.
+    it('should return 404 for session creation (moved to Matrix)', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/sessions',
         payload: {
-          agent: '',
+          agent: 'claude',
           cwd: '/tmp',
         },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(404);
     });
 
-    it('should return 400 for invalid session creation', async () => {
+    it('should return 404 for session deletion (moved to Matrix)', async () => {
       const response = await server.inject({
-        method: 'POST',
-        url: '/api/sessions',
-        payload: {
-          // Missing required 'agent' field
-          cwd: '/tmp',
-        },
+        method: 'DELETE',
+        url: '/api/sessions/some-id',
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(404);
     });
   });
 
