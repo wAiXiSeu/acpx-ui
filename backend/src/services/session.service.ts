@@ -8,6 +8,9 @@ import {
   createFileSessionStore,
   createAgentRegistry,
   DEFAULT_AGENT_NAME,
+  listSessions,
+  closeSession,
+  resolveSessionRecord,
 } from '@local/acpx/runtime';
 
 // Import types from stable path
@@ -19,23 +22,11 @@ import type {
   AcpRuntimeSessionMode,
 } from '@local/acpx/runtime';
 
-// WARNING: These imports use hash-based paths from acpx-fork's build output.
-// They will break if acpx-fork is rebuilt and the hash changes.
-// Track: https://github.com/openclaw/acpx/issues — request stable exports for:
-//   - listSessions / closeSession (from session module)
-//   - resolveSessionRecord (from prompt-turn module)
-import { t as sessionExports } from '@local/acpx/dist/session-DwM_3DqC.js';
-import { A as resolveSessionRecord } from '@local/acpx/dist/prompt-turn-Di3t13Tw.js';
-
 // Import types from local backend types
 import type { SessionRecord } from '../types/acpx.js';
 
 // Import permission types from ACP SDK
 import type { RequestPermissionRequest, RequestPermissionResponse } from '@agentclientprotocol/sdk';
-
-// Extract session functions from sessionExports
-const listSessions = (sessionExports as Record<string, unknown>).listSessions as () => Promise<SessionRecord[]>;
-const closeSession = (sessionExports as Record<string, unknown>).closeSession as (id: string) => Promise<SessionRecord>;
 
 /**
  * Options for creating a new session.

@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Clone acpx-fork
-        run: git clone https://github.com/openclaw/acpx.git acpx-fork --depth 1
+        run: git clone https://github.com/wAiXiSeu/acpx.git acpx-fork --depth 1
 
       - name: Build acpx-fork
         run: cd acpx-fork && npm install && npm run build

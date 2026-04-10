@@ -25,18 +25,9 @@ vi.mock('@local/acpx/runtime', () => ({
   createFileSessionStore: vi.fn(() => ({})),
   createAgentRegistry: vi.fn(() => ({})),
   DEFAULT_AGENT_NAME: 'opencode',
-}));
-
-// Mock the hash-path imports
-vi.mock('@local/acpx/dist/session-DwM_3DqC.js', () => ({
-  t: {
-    listSessions: vi.fn().mockResolvedValue([]),
-    closeSession: vi.fn(),
-  },
-}));
-
-vi.mock('@local/acpx/dist/prompt-turn-Di3t13Tw.js', () => ({
-  A: vi.fn(),
+  listSessions: vi.fn().mockResolvedValue([]),
+  closeSession: vi.fn(),
+  resolveSessionRecord: vi.fn(),
 }));
 
 import { SessionService } from '../src/services/session.service.js';
@@ -76,8 +67,8 @@ describe('SessionService', () => {
     });
 
     it('should create session and cache handle', async () => {
-      const mockModule = await import('@local/acpx/dist/prompt-turn-Di3t13Tw.js');
-      (mockModule.A as any).mockResolvedValue({
+      const mockModule = await import('@local/acpx/runtime');
+      (mockModule.resolveSessionRecord as any).mockResolvedValue({
         acpxRecordId: 'test-session-123',
         agentCommand: 'opencode',
         cwd: '/tmp',
