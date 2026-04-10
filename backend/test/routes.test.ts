@@ -3,7 +3,7 @@ import { server } from './setup.js';
 
 describe('Backend API Integration Tests', () => {
   describe('Health Check', () => {
-    it('should return health status', async () => {
+    it('should return health status with runtime info', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/health',
@@ -11,8 +11,11 @@ describe('Backend API Integration Tests', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('status', 'ok');
+      expect(body.status).toMatch(/^(ok|degraded)$/);
       expect(body).toHaveProperty('timestamp');
+      expect(body).toHaveProperty('runtime');
+      expect(body.runtime).toHaveProperty('healthy');
+      expect(typeof body.runtime.healthy).toBe('boolean');
     });
   });
 
