@@ -8,3 +8,10 @@ export const config = {
 export const isDevelopment = config.nodeEnv === 'development';
 export const isProduction = config.nodeEnv === 'production';
 export const isTest = config.nodeEnv === 'test';
+
+export const matrixConfig = {
+  homeserverUrl: process.env.MATRIX_HOMESERVER_URL || "http://localhost:8008",
+  accessToken: process.env.MATRIX_ACCESS_TOKEN || "",
+  userId: process.env.MATRIX_USER_ID || "@acpx:localhost",
+  managerRoomId: process.env.MATRIX_MANAGER_ROOM_ID || "",
+};
