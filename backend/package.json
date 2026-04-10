@@ -17,7 +17,8 @@
     "@fastify/websocket": "^8.3.1",
     "@local/acpx": "file:../acpx-fork",
     "fastify": "^4.28.1",
-    "fastify-plugin": "^5.1.0"
+    "fastify-plugin": "^5.1.0",
+    "matrix-js-sdk": "^41.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.9.1",
