@@ -1,9 +1,16 @@
+import { config as loadDotenv } from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import staticPlugin from '@fastify/static';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { config, isProduction, matrixConfig } from './config.js';
+
+// Load .env file (only in development, not in production)
+if (process.env.NODE_ENV !== 'production') {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  loadDotenv({ path: path.resolve(__dirname, '../.env') });
+}
 import routes from './routes/index.js';
 import websocketPlugin from './plugins/websocket.js';
 import { SessionService } from './services/session.service.js';
