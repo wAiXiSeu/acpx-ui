@@ -1,3 +1,13 @@
+// Load .env file for development (before reading any env vars)
+import { config as loadDotenv } from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+if (process.env.NODE_ENV !== 'production') {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  loadDotenv({ path: path.resolve(__dirname, '../.env') });
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
   host: process.env.HOST || '0.0.0.0',

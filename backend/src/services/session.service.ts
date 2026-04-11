@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
 // Import from acpx-fork via stable export paths
@@ -224,10 +225,57 @@ export class SessionService {
       cwd: record.cwd || process.cwd(),
     };
 
-    const handle = await runtime.ensureSession(ensureInput);
-    this.handleCache.set(sessionId, handle);
+    try {
+      const handle = await runtime.ensureSession(ensureInput);
+      this.handleCache.set(sessionId, handle);
+      return handle;
+    } catch (error) {
+      // Detect stale session resume errors (agent-side session no longer exists)
+      const err = error instanceof Error ? error : new Error(String(error));
+      const isStaleSessionError =
+        'detailCode' in err && err.detailCode === 'SESSION_RESUME_REQUIRED' ||
+        err.message.includes('could not be resumed');
 
-    return handle;
+      if (isStaleSessionError) {
+        console.warn(`Stale session ${sessionId} detected, cleaning up from index`);
+        await this.removeStaleSessionFromIndex(record.acpxRecordId || sessionId);
+        this.handleCache.delete(sessionId);
+        throw new Error(
+          `Session "${sessionId}" is no longer available on the agent. It has been removed from the session list.`,
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a stale session entry from the session index file.
+   */
+  private async removeStaleSessionFromIndex(acpxRecordId: string): Promise<void> {
+    const sessionDir = path.join(os.homedir(), '.acpx', 'sessions');
+    const indexPath = path.join(sessionDir, 'index.json');
+
+    try {
+      const raw = await fs.readFile(indexPath, 'utf8');
+      const index = JSON.parse(raw) as { schema: string; files: string[]; entries: Array<{ acpxRecordId: string; file: string }> };
+
+      const entryIndex = index.entries.findIndex((e) => e.acpxRecordId === acpxRecordId);
+      if (entryIndex === -1) return;
+
+      const removed = index.entries.splice(entryIndex, 1)[0];
+      const fileIndex = index.files.indexOf(removed.file);
+      if (fileIndex !== -1) {
+        index.files.splice(fileIndex, 1);
+      }
+
+      // Write back the updated index
+      const tempFile = `${indexPath}.${process.pid}.${Date.now()}.tmp`;
+      await fs.writeFile(tempFile, JSON.stringify(index, null, 2) + '\n', 'utf8');
+      await fs.rename(tempFile, indexPath);
+    } catch (error) {
+      console.warn(`Failed to remove stale session ${acpxRecordId} from index:`, error);
+    }
   }
 
   /**

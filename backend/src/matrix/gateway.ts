@@ -1,4 +1,4 @@
-import { createClient, MatrixClient, RoomEvent } from "matrix-js-sdk";
+import { createClient, MatrixClient, ClientEvent, EventType } from "matrix-js-sdk";
 import { EventEmitter } from "node:events";
 
 export interface MatrixGatewayConfig {
@@ -46,11 +46,11 @@ export class MatrixGateway extends EventEmitter {
   private setupEventListeners(): void {
     if (!this.client) return;
 
-    this.client.on(RoomEvent.Timeline, async (event, room) => {
-      if (event.getType() !== "m.room.message") return;
+    this.client.on(ClientEvent.Event, async (event: any) => {
+      if (event.getType() !== EventType.RoomMessage) return;
       if (event.getSender() === this.config.userId) return;
 
-      const roomId = room?.roomId;
+      const roomId = event.getRoomId();
       if (!roomId) return;
 
       const content = event.getContent();

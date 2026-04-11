@@ -30,5 +30,8 @@
     "node": ">=20",
     "bun": ">=1"
   },
-  "packageManager": "bun@1.1.38"
+  "packageManager": "bun@1.1.38",
+  "dependencies": {
+    "dotenv": "^17.4.1"
+  }
 }
