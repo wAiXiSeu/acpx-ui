@@ -74,7 +74,7 @@ export function useMultiSessionEvents(
         subscriptionsRef.current.delete(sessionId);
       }
     }
-  }, [activeSessionIds, streams, setSessionStreaming]);
+  }, [activeSessionIds, setSessionStreaming]);
 
   // Clean up all subscriptions on unmount
   useEffect(() => {

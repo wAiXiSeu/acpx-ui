@@ -52,12 +52,12 @@ export default function ChatThread({
   }, [activeSessionId, userMessagesBySession.size, openTabs.length]);
 
   // Also scroll when agent events arrive for the active session
-  const eventsBySession = useSessionStore((s) => s.eventsBySession);
+  const activeEvents = activeSessionId
+    ? useSessionStore((s) => s.eventsBySession[activeSessionId])
+    : undefined;
   useEffect(() => {
-    if (activeSessionId && eventsBySession[activeSessionId]) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [activeSessionId, eventsBySession]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeSessionId, activeEvents]);
 
   const handleTabClick = (sessionId: string) => {
     onSessionChange(sessionId);
@@ -65,15 +65,14 @@ export default function ChatThread({
 
   const handleTabClose = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Unsubscribe WS + clear streaming state
+    // Unsubscribe WS (cleanup handles setSessionStreaming + unsubscribe)
     unsubscribeSession(sessionId);
-    useSessionStore.getState().setSessionStreaming(sessionId, false);
+    // Clear events and user messages for this tab
     useSessionStore.getState().clearSessionEvents(sessionId);
 
     const newTabs = openTabs.filter((id) => id !== sessionId);
     setOpenTabs(newTabs);
 
-    // Clear user messages for this tab
     setUserMessagesBySession((prev) => {
       const next = new Map(prev);
       next.delete(sessionId);
@@ -87,8 +86,6 @@ export default function ChatThread({
       } else {
         onSessionClose(sessionId);
       }
-    } else {
-      onSessionClose(sessionId);
     }
   };
 
@@ -127,9 +124,7 @@ export default function ChatThread({
     ? userMessagesBySession.get(activeSessionId) ?? []
     : [];
 
-  const activeEvents = activeSessionId
-    ? eventsBySession[activeSessionId] ?? []
-    : [];
+  const events = activeEvents ?? [];
 
   const activeStreaming = activeSessionId
     ? isSessionStreaming(activeSessionId)
@@ -137,14 +132,14 @@ export default function ChatThread({
 
   // Build agent messages from events
   const agentMessages: MessageEntry[] = [];
-  if (activeEvents.length > 0) {
+  if (events.length > 0) {
     // Group text_delta events into continuous agent messages
     // A simple approach: each batch of consecutive text_delta events between
     // non-text events forms one agent message.
     let currentText = "";
     let currentStartTs: number | null = null;
 
-    for (const event of activeEvents) {
+    for (const event of events) {
       if (event.type === "text_delta") {
         if (currentStartTs === null) {
           currentStartTs = event.timestamp;
