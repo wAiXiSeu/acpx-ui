@@ -43,6 +43,21 @@ const initialState: SessionState = {
   lastError: null,
 };
 
+/** Internal helper: add event to eventsBySession and sync flat events for backward compat. */
+function addEventToSession(
+  state: SessionState,
+  sessionId: string,
+  event: AcpEvent,
+): Pick<SessionState, 'eventsBySession' | 'events'> {
+  const existing = state.eventsBySession[sessionId] ?? [];
+  const eventsBySession = { ...state.eventsBySession, [sessionId]: [...existing, event] };
+  const events =
+    state.activeSessionId === null || sessionId === state.activeSessionId
+      ? [...state.events, event]
+      : state.events;
+  return { eventsBySession, events };
+}
+
 export const useSessionStore = create<SessionStore>()(
   subscribeWithSelector((set, get) => ({
     ...initialState,
@@ -69,32 +84,22 @@ export const useSessionStore = create<SessionStore>()(
     }),
 
     addEvent: (event) => {
-      const sid = event.sessionId;
-      set((state) => {
-        const existing = state.eventsBySession[sid] ?? [];
-        const updated = { ...state.eventsBySession, [sid]: [...existing, event] };
-        // Update flat events: always when no active session (backward compat),
-        // or when the event's sessionId matches the active session
-        const events =
-          state.activeSessionId === null || sid === state.activeSessionId
-            ? [...state.events, event]
-            : state.events;
-        return { eventsBySession: updated, events };
-      });
+      set((state) => addEventToSession(state, event.sessionId, event));
     },
 
     setStreaming: (isStreaming) =>
       set((state) => {
-        // Old API: update streamingSessions based on activeSessionId
-        const nextSessions = new Set(state.streamingSessions);
         if (state.activeSessionId) {
+          const nextSessions = new Set(state.streamingSessions);
           if (isStreaming) {
             nextSessions.add(state.activeSessionId);
           } else {
             nextSessions.delete(state.activeSessionId);
           }
+          return { isStreaming: nextSessions.size > 0, streamingSessions: nextSessions };
         }
-        return { isStreaming, streamingSessions: nextSessions };
+        // No active session: old API consumer, update isStreaming directly
+        return { isStreaming };
       }),
 
     markSessionConnected: (sessionId) =>
@@ -116,21 +121,13 @@ export const useSessionStore = create<SessionStore>()(
 
     // New multi-session actions
     addSessionEvent: (sessionId, event) =>
-      set((state) => {
-        const existing = state.eventsBySession[sessionId] ?? [];
-        const updated = { ...state.eventsBySession, [sessionId]: [...existing, event] };
-        // Update flat events: always when no active session,
-        // or when the sessionId matches the active session
-        const events =
-          state.activeSessionId === null || sessionId === state.activeSessionId
-            ? [...state.events, event]
-            : state.events;
-        return { eventsBySession: updated, events };
-      }),
+      set((state) => addEventToSession(state, sessionId, event)),
 
     clearSessionEvents: (sessionId) =>
       set((state) => {
-        const { [sessionId]: _, ...rest } = state.eventsBySession;
+        const rest = Object.fromEntries(
+          Object.entries(state.eventsBySession).filter(([k]) => k !== sessionId),
+        );
         const events = sessionId === state.activeSessionId ? [] : state.events;
         return { eventsBySession: rest, events };
       }),
