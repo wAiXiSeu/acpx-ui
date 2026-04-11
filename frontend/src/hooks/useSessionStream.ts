@@ -3,7 +3,7 @@ import { useWebSocket } from './useWebSocket';
 import { useSessionStore } from '../stores/sessionStore';
 import type { AcpEvent } from '../types/acpx';
 
-interface UseSessionStreamReturn {
+export interface UseSessionStreamReturn {
   isConnected: boolean;
   isReconnecting: boolean;
   error: string | null;
