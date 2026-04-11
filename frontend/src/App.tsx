@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import Chat from "./pages/Chat";
 import History from "./pages/History";
 import Home from "./pages/Home";
 import Sessions from "./pages/Sessions";
@@ -8,6 +9,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { path: "/", label: "Dashboard", icon: "◆" },
     { path: "/sessions", label: "Sessions", icon: "◎" },
+    { path: "/chat", label: "Chat", icon: "◆" },
     { path: "/history", label: "History", icon: "◈" },
   ];
 
@@ -65,6 +67,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/sessions" element={<Sessions />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:sessionId" element={<Chat />} />
           <Route path="/history" element={<History />} />
         </Routes>
       </ErrorBoundary>
